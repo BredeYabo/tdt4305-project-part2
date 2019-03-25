@@ -1,5 +1,6 @@
 import sys
 from pyspark import SparkConf, SparkContext
+# from pyspark.mllib.feature import HashingTF # Requires Yarn
 
 sc = SparkContext()
 
@@ -8,23 +9,35 @@ k_rec_users = str(sys.argv[2])
 in_file = str(sys.argv[3])
 out_file = str(sys.argv[4])
 
-# Tweets schema:
 # user \t message
+tweets = sc.textFile(in_file) \
+        .map(lambda line: (line.split("\t")))
 
-tweets = sc.textFile("tweets.tsv") \
-        .map(lambda line: (line.split("\t"))) \
+
+# user document
+user_tweets = tweets.filter(lambda x: x[0] == user) \
+        .flatMapValues(lambda x: x.split(" ")) \
+        .distinct() \
+        .values() \
+        .cache()
         # .map(lambda (x,y): (x, (y.split(" "),1))) # Tokenize message
 
-user_tweet = tweets.filter(lambda x: x[0] == user) \
-        .map(lambda x: x[1]) \
-        .flatMap(lambda x: x.split(" ")) \
-        .distinct()
+# all_terms = tweets.map(lambda (x,y): y) \
+#         .flatMap(lambda x: x.split(" "))
 
+# Treating all tweets by a user as a document
+documents = tweets.reduceByKey(lambda x,y: x+y) \
+        .map(lambda x: (x,0)) \
+        #.map(lambda (x,y): ((x), y+x[1].count(user_tweets.collect())))
+        ##.map(lambda x: x[1].split(" "))
 
+# hashingTF = HashingTF()
+user_tweets.foreach(lambda x: counter(x))
 
-#sim = tweets.reduceByKey(lambda x, y: ((x[0],x[1]+1)) if x[0] == y[0] else ((x[0],x[1]+1)))
+print(documents.count())
+print(documents.take(1))
+#print(all_terms.take(10))
 
-print(tweets.take(1))
-#print(sim.take(1))
-print(user_tweet.collect())
-
+# all_tweets.map(lambda x: "%s" %(x)) \
+#         .coalesce(1, shuffle = False) \
+#         .saveAsTextFile(out_file)
