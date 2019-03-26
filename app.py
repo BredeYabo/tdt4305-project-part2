@@ -28,11 +28,11 @@ user_tweets = tweets.filter(lambda x: x[0] == user) \
 # Treating all tweets by a user as a document
 documents = tweets.reduceByKey(lambda x,y: x+y) \
         .map(lambda x: (x,0)) \
-        #.map(lambda (x,y): ((x), y+x[1].count(user_tweets.collect())))
+        .join(user_tweets)
+        # .map(lambda (x,y): ((x), y+x[1].count("Hello")))
         ##.map(lambda x: x[1].split(" "))
 
 # hashingTF = HashingTF()
-user_tweets.foreach(lambda x: counter(x))
 
 print(documents.count())
 print(documents.take(1))
