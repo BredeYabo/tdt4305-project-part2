@@ -46,8 +46,6 @@ words = tweets.map(lambda x: (x[0],x[1].split(" "))) \
         # map.(lambda x: (x,0))
         # map.(lambda)
 
-# RDD operation in lambda
-
 smallRDD = sc.broadcast(user_tweets.collect())
 # join_a_b = words.filter(lambda: smallRDD.value == uu)
 def file_read1(line):
@@ -55,25 +53,22 @@ def file_read1(line):
     list1 += [line]
     return line
 
-
 def f(x):
-    global num
+    num = 0
     global list1
     for word in x:
         if word in smallRDD.value:
             num+=1
     list1 += [num]
+    return num
 
-num = sc.accumulator(0)
 list1 = sc.accumulator([], ListParam())
 words.foreach(lambda (x,y): f(y))
 
-# hashingTF = HashingTF()
+for i in range(100):
+    print(list1.value[i])
 
-print(num.value)
-print(list1.value[10])
-
-# print(words.take(1))
+print(words.take(1))
 #print(accum.count())
 # print(smallRDD.value)
 # print(user_tweets.take(1))
