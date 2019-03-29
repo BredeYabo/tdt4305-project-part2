@@ -18,7 +18,7 @@ usr, k, in_file, out_file = getParam(sys.argv)
 
 # usr \t message
 tweets = sc.textFile(in_file) \
-        .map(lambda line: (line.split("\t")))
+        .map(lambda line: (line.split("\t"))) \
 
 # usr document
 usr_tweets = tweets.filter(lambda x: x[0] == usr) \
@@ -37,6 +37,7 @@ words_distinct = words.distinct() \
         .sortByKey(ascending=False)
 
 user_words = sc.broadcast(usr_tweets.distinct().collect())
+
 words = words.filter(lambda (x,y): y in user_words.value) \
         .map(lambda (x,y): (x,1)) \
         .reduceByKey(lambda x,y: x+y) \
@@ -46,14 +47,14 @@ words = words.filter(lambda (x,y): y in user_words.value) \
 top_10_words = words.zipWithIndex() \
         .filter(lambda x: x[1] < k) \
         .keys() \
-        .map(lambda (x,y): (y,x))
 
 top_10_words_distinct = words_distinct.zipWithIndex() \
         .filter(lambda x: x[1] < k) \
         .keys() \
-        .map(lambda (x,y): (y,x))
-
+# Sort  Alphabetically then Numerical 
 top_10_words = top_10_words.union(top_10_words_distinct) \
+        .map(lambda (x,y): (y,x)) \
+        .sortByKey(ascending=True) \
         .map(lambda (x,y): (y,x)) \
         .sortByKey(ascending=False)
 
