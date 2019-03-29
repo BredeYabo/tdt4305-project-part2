@@ -53,7 +53,7 @@ top_10_words_distinct = words_distinct.zipWithIndex() \
         .keys() \
         .map(lambda (x,y): (y,x))
 
-top_10_words = top_10_words.join(top_10_words_distinct) \
+top_10_words = top_10_words.union(top_10_words_distinct) \
         .map(lambda (x,y): (y,x)) \
         .sortByKey(ascending=False)
 
