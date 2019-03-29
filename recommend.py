@@ -26,17 +26,38 @@ usr_tweets = tweets.filter(lambda x: x[0] == usr) \
         .flatMapValues(lambda x: x.split(" ")) \
         .values() \
 
-print(usr_tweets.count())
-print(usr_tweets.take(4))
-user_distinct = sc.broadcast(usr_tweets.distinct().collect())
-words = tweets.flatMapValues(lambda x: (x.split(" "))) \
-        .filter(lambda (x,y): y in user_distinct.value) \
+words = tweets.flatMapValues(lambda x: (x.split(" ")))
+
+user_words = sc.broadcast(usr_tweets.collect())
+words_distinct = words.distinct() \
+        .filter(lambda (x,y): y in user_words.value) \
         .map(lambda (x,y): (x,1)) \
         .reduceByKey(lambda x,y: x+y) \
         .map(lambda (x,y): (y,x)) \
         .sortByKey(ascending=False)
 
-top_10_rdd = words.zipWithIndex() \
+user_words = sc.broadcast(usr_tweets.distinct().collect())
+words = words.filter(lambda (x,y): y in user_words.value) \
+        .map(lambda (x,y): (x,1)) \
+        .reduceByKey(lambda x,y: x+y) \
+        .map(lambda (x,y): (y,x)) \
+        .sortByKey(ascending=False)
+
+top_10_words = words.zipWithIndex() \
+        .filter(lambda x: x[1] < k) \
+        .keys() \
+        .map(lambda (x,y): (y,x))
+
+top_10_words_distinct = words_distinct.zipWithIndex() \
+        .filter(lambda x: x[1] < k) \
+        .keys() \
+        .map(lambda (x,y): (y,x))
+
+top_10_words = top_10_words.join(top_10_words_distinct) \
+        .map(lambda (x,y): (y,x)) \
+        .sortByKey(ascending=False)
+
+top_10_words.zipWithIndex() \
         .filter(lambda x: x[1] < k) \
         .keys() \
         .map(lambda x: "%s\t%s" %(x[0],x[1])) \
