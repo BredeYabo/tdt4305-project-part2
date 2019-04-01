@@ -28,24 +28,22 @@ usr_tweets = tweets.filter(lambda x: x[0] == usr) \
 
 # Filter out user from words
 words = tweets.filter(lambda x: x[0] != usr) \
-        .flatMapValues(lambda x: (x.split(" ")))
+        .flatMapValues(lambda x: (x.split(" "))) \
+        .filter(lambda (x,y): y in user_words.value)
 
 user_words = sc.broadcast(usr_tweets.distinct().collect())
-words = words.filter(lambda (x,y): y in user_words.value)
 
 # count of words in tweet Y
-all_words = words.map(lambda (x,y): (x,1)) \
-        .reduceByKey(lambda x,y: x+y)
+all_words = words.map(lambda (x,y): ((x,y),1)) \
+        .reduceByKey(lambda x,y: x+y) \
+        .map(lambda ((x,y),z): (y,(x,z)))
 
-# count of words in tweet X
-user_words = sc.broadcast(usr_tweets.collect())
-words_distinct = words.distinct() \
-        .map(lambda (x,y): (x,user_words.value.count(y))) \
-        .reduceByKey(lambda x,y: x+y)
+user_words_count = usr_tweets.map(lambda x: (x,1)).reduceByKey(lambda x,y: x+y)
 
-# Need to optimize the join
-similarity = all_words.join(words_distinct) \
-        .map(lambda (x,y): (x,min(y))) \
+# # Need to optimize the join
+all_words.join(user_words_count) \
+        .map(lambda (x,(y,z)): (y[0],min(y[1],z))) \
+        .reduceByKey(lambda x,y: x+y) \
         .sortByKey(ascending=True) \
         .map(lambda (x,y): (y,x)) \
         .sortByKey(ascending=False) \
