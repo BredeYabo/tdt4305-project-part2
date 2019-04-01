@@ -27,22 +27,19 @@ usr_tweets = tweets.filter(lambda x: x[0] == usr) \
         .values()
 
 # Filter out user from words
+user_words = sc.broadcast(usr_tweets.distinct().collect())
 words = tweets.filter(lambda x: x[0] != usr) \
         .flatMapValues(lambda x: (x.split(" "))) \
         .filter(lambda (x,y): y in user_words.value)
 
-user_words = sc.broadcast(usr_tweets.distinct().collect())
-
 # count of words in tweet Y
 all_words = words.map(lambda (x,y): ((x,y),1)) \
         .reduceByKey(lambda x,y: x+y) \
-        .map(lambda ((x,y),z): (y,(x,z)))
-
+# ((user,word),count)
 user_words_count = usr_tweets.map(lambda x: (x,1)).reduceByKey(lambda x,y: x+y)
+sim = sc.broadcast(dict(zip(user_words_count.keys().collect(), user_words_count.values().collect())))
 
-# # Need to optimize the join
-all_words.join(user_words_count) \
-        .map(lambda (x,(y,z)): (y[0],min(y[1],z))) \
+all_words.map(lambda ((x,y),z): (x, min(z, sim.value[y]))) \
         .reduceByKey(lambda x,y: x+y) \
         .sortByKey(ascending=True) \
         .map(lambda (x,y): (y,x)) \
