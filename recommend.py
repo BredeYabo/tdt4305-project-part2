@@ -26,7 +26,9 @@ usr_tweets = tweets.filter(lambda x: x[0] == usr) \
         .flatMapValues(lambda x: x.split(" ")) \
         .values()
 
-words = tweets.flatMapValues(lambda x: (x.split(" ")))
+# Filter out user from words
+words = tweets.filter(lambda x: x[0] != usr) \
+        .flatMapValues(lambda x: (x.split(" ")))
 
 user_words = sc.broadcast(usr_tweets.distinct().collect())
 words = words.filter(lambda (x,y): y in user_words.value)
@@ -41,6 +43,7 @@ words_distinct = words.distinct() \
         .map(lambda (x,y): (x,user_words.value.count(y))) \
         .reduceByKey(lambda x,y: x+y)
 
+# Need to optimize the join
 similarity = all_words.join(words_distinct) \
         .map(lambda (x,y): (x,min(y))) \
         .sortByKey(ascending=True) \
