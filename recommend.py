@@ -35,11 +35,12 @@ words = tweets.filter(lambda x: x[0] != usr) \
 # count of words in tweet Y
 all_words = words.map(lambda (x,y): ((x,y),1)) \
         .reduceByKey(lambda x,y: x+y) \
-# ((user,word),count)
-user_words_count = usr_tweets.map(lambda x: (x,1)).reduceByKey(lambda x,y: x+y)
-sim = sc.broadcast(dict(zip(user_words_count.keys().collect(), user_words_count.values().collect())))
+        .map(lambda ((x,y),z): (y,(x,z)))
 
-all_words.map(lambda ((x,y),z): (x, min(z, sim.value[y]))) \
+user_words_count = usr_tweets.map(lambda x: (x,1)).reduceByKey(lambda x,y: x+y)
+
+all_words.join(user_words_count) \
+        .map(lambda (x,(y,z)): (y[0],min(y[1],z))) \
         .reduceByKey(lambda x,y: x+y) \
         .sortByKey(ascending=True) \
         .map(lambda (x,y): (y,x)) \
@@ -50,3 +51,20 @@ all_words.map(lambda ((x,y),z): (x, min(z, sim.value[y]))) \
         .map(lambda x: "%s\t%s" %(x[1],x[0])) \
         .coalesce(1, shuffle = False) \
         .saveAsTextFile(out_file)
+
+####---------------------- If we were to use broadcast join ---------------------------------
+# sim = sc.broadcast(dict(zip(user_words_count.keys().collect(), user_words_count.values().collect())))
+
+# all_words.map(lambda ((x,y),z): (x, min(z, sim.value[y]))) \
+#         .reduceByKey(lambda x,y: x+y) \
+#         .sortByKey(ascending=True) \
+#         .map(lambda (x,y): (y,x)) \
+#         .sortByKey(ascending=False) \
+#         .zipWithIndex() \
+#         .filter(lambda x: x[1] < k) \
+#         .keys() \
+#         .map(lambda x: "%s\t%s" %(x[1],x[0])) \
+#         .coalesce(1, shuffle = False) \
+#         .saveAsTextFile(out_file)
+
+
